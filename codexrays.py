@@ -8,6 +8,7 @@ import re
 import signal
 import sys
 import time
+import textwrap
 from collections import deque
 from dataclasses import dataclass, field
 from typing import Deque, Dict, Optional, Tuple, Set
@@ -151,6 +152,7 @@ class VizApp:
         self.lines_expanded = lines_expanded
         self.strip_ansi = strip_ansi
         self.json_pretty = json_pretty
+        self.json_wrap: bool = True
         self.recent_other: Deque[str] = deque(maxlen=50)
         # Follow mode: when True, keep viewport at newest (top). When False, show banner if new items arrive.
         self.follow_top: bool = True
@@ -1028,7 +1030,24 @@ class VizApp:
                     lines.append(s)
                 draw_colored = False
             else:
-                lines = json_lines
+                if self.json_wrap:
+                    # Word-wrap each pretty JSON line preserving indent
+                    wrapped: list[str] = []
+                    avail = max(1, w - 2)
+                    for ln in json_lines:
+                        indent = len(ln) - len(ln.lstrip())
+                        wrapped.extend(textwrap.wrap(
+                            ln,
+                            width=avail,
+                            break_long_words=False,
+                            break_on_hyphens=False,
+                            subsequent_indent=' ' * indent,
+                            replace_whitespace=False,
+                            drop_whitespace=False,
+                        ) or [ln])
+                    lines = wrapped
+                else:
+                    lines = json_lines
                 draw_colored = True
             view_h = h - 2
             max_scroll = max(0, len(lines) - view_h)
@@ -1043,7 +1062,8 @@ class VizApp:
                     self.stdscr.addnstr(row, 0, lines[i][: w - 1], w - 1, self.color_for_type(st.type_label))
                 row += 1
             # Footer
-            footer = " ↑/↓/PgUp/PgDn/Home/End scroll  e:export  x:pin  q/ESC:back "
+            wrap_state = 'on' if (self.json_pretty and self.json_wrap) else 'off'
+            footer = f" ↑/↓/PgUp/PgDn/Home/End scroll  w:wrap({wrap_state})  e:export  x:pin  q/ESC:back "
             self.stdscr.addnstr(h - 1, 0, footer[: w - 1], w - 1, curses.A_DIM)
             self.stdscr.refresh()
 
@@ -1074,6 +1094,9 @@ class VizApp:
                 scroll = 0
             elif ch in (curses.KEY_END, ord('G')):
                 scroll = 10**9
+            elif ch in (ord('w'), ord('W')):
+                # Toggle JSON wrap in detail view
+                self.json_wrap = not self.json_wrap
             elif ch in (ord('e'), ord('E')):
                 self.export_item(key)
             elif ch in (ord('x'), ord('X')):

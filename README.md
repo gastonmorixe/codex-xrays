@@ -1,4 +1,4 @@
-# 🛟 CodeXRays 1.0 (alpha)
+# ✨ Codex Xrays 1.0
 
 
 <img width="1046" height="638" alt="image" src="https://github.com/user-attachments/assets/4ce3cea3-7638-408b-9433-d6714d30ddd4" />
@@ -38,23 +38,25 @@ $ RUST_LOG=codex_core=trace,codex_exec=debug,codex_mcp_client=debug \
 - Install (pipx):
 
 ```bash
+# Install once
 pipx install git+https://github.com/gastonmorixe/codex-xrays
-# then run (installed CLI):
-# uses default log at ~/.codex/log/codex-tui.log
-codex-xrays --pretty-preview --pretty-mode hybrid
+
+# Recommended run (best experience):
+# 🧠 Pretty list previews + 🎨 JSON pretty view in full screen
+# tails ~/.codex/log/codex-tui.log by default
+codex-xrays --pretty-preview --pretty-mode hybrid --json-pretty
 ```
 
 - From the repo/log directory (without install):
 
 ```bash
-python3 codexrays.py                                  # tails ~/.codex/log/codex-tui.log
-python3 codexrays.py --from-start                     # read from beginning
+# Same, without pipx
+python3 codexrays.py --pretty-preview --pretty-mode hybrid --json-pretty
+# Extras
+python3 codexrays.py --from-start
 python3 codexrays.py -f ./codex-tui.log -L 8 --max-items 300
-python3 codexrays.py --pretty-preview                 # emoji + parsed previews
-python3 codexrays.py --pretty-preview --pretty-mode hybrid   # summary + raw excerpt
-# or via env var (auto-on):
-XRAYS_PRETTY=1 python3 codexrays.py
-XRAYS_PRETTY=1 XRAYS_PRETTY_MODE=summary python3 codexrays.py
+# Or via env var (auto-on pretty)
+XRAYS_PRETTY=1 XRAYS_PRETTY_MODE=hybrid python3 codexrays.py --json-pretty
 ```
 
 
@@ -73,6 +75,7 @@ XRAYS_PRETTY=1 XRAYS_PRETTY_MODE=summary python3 codexrays.py
 - p: pause/resume tailing
 - s: toggle "from start" mode and reopen the file
 - Space: manual refresh
+- In full‑screen JSON view (`--json-pretty`): `w` toggles word‑wrap (🟢 on by default).
 
 
 ## Command‑line Options
@@ -90,7 +93,7 @@ XRAYS_PRETTY=1 XRAYS_PRETTY_MODE=summary python3 codexrays.py
 
 ## What the UI Shows
 
-- Header: app name with a `[FOLLOWING]` badge when active, plus counters (events, deltas), EPS (events/second), total items, active filter, and `pretty:off|summary|hybrid`.
+- Header: app name + `[FOLLOWING]` badge when active, plus counters (🧮 events/deltas, ⚡ EPS), total items, active filter, and `pretty:off|summary|hybrid`.
 - Main list: most recently updated entries first. Each entry shows `short_item_id#output_index:` plus up to `N` wrapped lines of the latest content. Colors map to event types.
 - Recent logs: compact tail of non‑delta events. With pretty mode, SSE/FunctionCall lines are summarized (🧰 tools, 🔎 queries, 🔗 hosts, 📄 files, 🛠️ commands, 💬 text).
 
@@ -145,6 +148,7 @@ XRAYS_PRETTY=1 XRAYS_PRETTY_MODE=summary python3 codexrays.py
 ## Preview Behavior
 - Pretty mode shows a one-line summary followed by live tail lines, so the newest text is always visible. Increase `-L` or press `m` to see more.
 - Recent logs strip ANSI color codes by default for readability; use `--keep-ansi` if your logs rely on terminal colors.
+- Full‑screen JSON (with `--json-pretty`) pretty‑prints objects/arrays with light colors; press `w` to wrap/unwrap long values.
 - No colors: ensure your terminal supports ANSI colors; `TERM` should be something like `xterm-256color`.
 - Windows: install `windows-curses` (`pip install windows-curses`). Run from a Unicode‑capable terminal.
 - Large files: prefer tail mode (default). Use `--from-start` only when needed.
