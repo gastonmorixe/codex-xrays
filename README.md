@@ -85,6 +85,7 @@ XRAYS_PRETTY=1 XRAYS_PRETTY_MODE=summary python3 codexrays.py
 - `--pretty-preview`: Enable emoji + parsed previews (can also set `XRAYS_PRETTY=1`).
 - `--pretty-mode <summary|hybrid>`: Summary only, or summary plus a raw excerpt beneath.
 - `--keep-ansi`: Do not strip ANSI color codes from recent logs (default strips them).
+- `--json-pretty`: In full‑screen detail view, pretty‑print JSON and color keys/values.
 
 
 ## What the UI Shows
@@ -209,3 +210,7 @@ XRAYS_PRETTY=1 XRAYS_PRETTY_MODE=summary python3 codexrays.py
 ## License
 
 Gaston Morixe - MIT License 2025
+## Release
+- Update `CHANGELOG.md` with a new `## <version>` section.
+- Tag the version: `git tag -a 1.0.1 -m "Codex Xrays 1.0.1" && git push origin 1.0.1`.
+- GitHub Actions publishes a release using the matching CHANGELOG section (falls back to commits if not found).

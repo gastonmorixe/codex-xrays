@@ -140,7 +140,7 @@ def shorten_id(item_id: str, keep: int = 10) -> str:
 
 
 class VizApp:
-    def __init__(self, stdscr, file_path: str, from_start: bool = False, max_items: int = 200, lines_per_item: int = 5, pretty_preview: bool = False, pretty_mode: str = "summary", lines_expanded: int = 12, strip_ansi: bool = True):
+    def __init__(self, stdscr, file_path: str, from_start: bool = False, max_items: int = 200, lines_per_item: int = 5, pretty_preview: bool = False, pretty_mode: str = "summary", lines_expanded: int = 12, strip_ansi: bool = True, json_pretty: bool = False):
         self.stdscr = stdscr
         self.tailer = FileTail(file_path, from_start=from_start)
         self.items: Dict[Tuple[str, int], ItemState] = {}
@@ -150,6 +150,7 @@ class VizApp:
         self.pretty_mode = pretty_mode
         self.lines_expanded = lines_expanded
         self.strip_ansi = strip_ansi
+        self.json_pretty = json_pretty
         self.recent_other: Deque[str] = deque(maxlen=50)
         # Follow mode: when True, keep viewport at newest (top). When False, show banner if new items arrive.
         self.follow_top: bool = True
@@ -237,6 +238,76 @@ class VizApp:
                 s = s[width:]
             lines.append(s)
         return lines
+
+    def _pretty_json_lines(self, content: str) -> Optional[list[str]]:
+        s = content.strip()
+        if not s or (not s.startswith('{') and not s.startswith('[')):
+            return None
+        try:
+            obj = json.loads(s)
+        except Exception:
+            return None
+        try:
+            pretty = json.dumps(obj, indent=2, ensure_ascii=False)
+        except Exception:
+            return None
+        return pretty.split('\n')
+
+    def _draw_json_line(self, row: int, col: int, text: str, width: int, default_attr: int):
+        # Simple highlighter: indent + key (cyan) + punctuation default; values by type
+        if not self._has_colors_safe():
+            try:
+                self.stdscr.addnstr(row, col, text[: width], width, default_attr)
+            except curses.error:
+                pass
+            return
+        key_m = re.match(r'^(\s*)"([^"\\]*(?:\\.[^"\\]*)*)"\s*:(\s*)(.*)$', text)
+        if not key_m:
+            # color booleans/null/numbers/strings lightly
+            val = text.strip()
+            attr = default_attr
+            if val.startswith('"'):
+                attr = curses.color_pair(3)
+            elif re.match(r'^-?\d', val):
+                attr = curses.color_pair(5)
+            elif val.startswith(('true','false','null')):
+                attr = curses.color_pair(4)
+            try:
+                self.stdscr.addnstr(row, col, text[: width], width, attr)
+            except curses.error:
+                pass
+            return
+        indent, key, gap, rest = key_m.groups()
+        x = col
+        try:
+            self.stdscr.addnstr(row, x, indent[: width - (x-col)], width - (x-col), default_attr)
+        except curses.error:
+            pass
+        x += len(indent)
+        ktxt = '"' + key + '"'
+        try:
+            self.stdscr.addnstr(row, x, ktxt[: max(0, width - (x-col))], max(0, width - (x-col)), curses.color_pair(2))
+        except curses.error:
+            pass
+        x += len(ktxt)
+        try:
+            self.stdscr.addnstr(row, x, ':' + gap, min(len(':'+gap), max(0, width - (x-col))), default_attr)
+        except curses.error:
+            pass
+        x += len(':'+gap)
+        # value coloring
+        val_attr = default_attr
+        rv = rest.lstrip()
+        if rv.startswith('"'):
+            val_attr = curses.color_pair(3)
+        elif re.match(r'^-?\d', rv):
+            val_attr = curses.color_pair(5)
+        elif rv.startswith(('true','false','null')):
+            val_attr = curses.color_pair(4)
+        try:
+            self.stdscr.addnstr(row, x, rest[: max(0, width - (x-col))], max(0, width - (x-col)), val_attr)
+        except curses.error:
+            pass
 
     def _jsonish_extract(self, text: str) -> dict:
         # Heuristic extraction from possibly partial JSON strings
@@ -942,15 +1013,23 @@ class VizApp:
                 self.stdscr.addnstr(0, 0, title[: w - 1], w - 1, curses.color_pair(1) | curses.A_BOLD)
             else:
                 self.stdscr.addnstr(0, 0, title[: w - 1], w - 1, curses.A_REVERSE)
-            # Prepare lines with wrapping
+            # Prepare lines with wrapping (optionally pretty JSON)
             content = st.snapshot().replace('\r', '')
-            lines: list[str] = []
-            for seg in content.split('\n'):
-                s = seg
-                while len(s) > w - 2:
-                    lines.append(s[: w - 2])
-                    s = s[w - 2:]
-                lines.append(s)
+            json_lines: Optional[list[str]] = None
+            if self.json_pretty:
+                json_lines = self._pretty_json_lines(content)
+            if json_lines is None:
+                lines: list[str] = []
+                for seg in content.split('\n'):
+                    s = seg
+                    while len(s) > w - 2:
+                        lines.append(s[: w - 2])
+                        s = s[w - 2:]
+                    lines.append(s)
+                draw_colored = False
+            else:
+                lines = json_lines
+                draw_colored = True
             view_h = h - 2
             max_scroll = max(0, len(lines) - view_h)
             scroll = max(0, min(max_scroll, scroll))
@@ -958,7 +1037,10 @@ class VizApp:
             row = 1
             end = min(len(lines), scroll + view_h)
             for i in range(scroll, end):
-                self.stdscr.addnstr(row, 0, lines[i][: w - 1], w - 1, self.color_for_type(st.type_label))
+                if draw_colored:
+                    self._draw_json_line(row, 0, lines[i], w - 1, self.color_for_type(st.type_label))
+                else:
+                    self.stdscr.addnstr(row, 0, lines[i][: w - 1], w - 1, self.color_for_type(st.type_label))
                 row += 1
             # Footer
             footer = " ↑/↓/PgUp/PgDn/Home/End scroll  e:export  x:pin  q/ESC:back "
@@ -1011,6 +1093,7 @@ def main():
     parser.add_argument("--lines-expanded", type=int, default=12, help="Lines to show when an item is expanded with 'm'")
     parser.add_argument("--pretty-preview", action="store_true", help="Render emoji/parsed previews in list view (or set XRAYS_PRETTY=1)")
     parser.add_argument("--pretty-mode", choices=["summary", "hybrid"], help="Pretty preview style when enabled")
+    parser.add_argument("--json-pretty", action="store_true", help="In detail view, pretty-print JSON with simple colors")
     parser.add_argument("--keep-ansi", action="store_true", help="Do not strip ANSI color codes from recent logs")
     args = parser.parse_args()
 
@@ -1052,6 +1135,7 @@ def main():
             pretty_mode=args.pretty_mode,
             lines_expanded=args.lines_expanded,
             strip_ansi=(not args.keep_ansi),
+            json_pretty=args.json_pretty,
         )
         app.loop()
 

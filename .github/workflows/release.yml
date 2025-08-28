@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build release notes
+        id: notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          # Try to extract the section for TAG from CHANGELOG.md
+          if [ -f CHANGELOG.md ]; then
+            awk -v tag="$TAG" '
+              BEGIN{found=0}
+              $0 ~ "^##[[:space:]]*(v?" tag ")([[:space:]]|$|—)" {found=1; print; next}
+              /^##[[:space:]]/ && found==1 {exit}
+              found==1 {print}
+            ' CHANGELOG.md > RELEASE_NOTES.md || true
+          fi
+          if [ ! -s RELEASE_NOTES.md ]; then
+            # Fallback: generate notes from commits since previous tag
+            PREV=$(git tag --sort=-creatordate | grep -v "^$TAG$" | head -n1 || true)
+            echo "## ${TAG}" > RELEASE_NOTES.md
+            if [ -n "$PREV" ]; then
+              echo "Changes since $PREV" >> RELEASE_NOTES.md
+              git log --pretty=format:'- %ad %h %s' --date=short "$PREV..$TAG" >> RELEASE_NOTES.md || true
+            else
+              echo "Initial release" >> RELEASE_NOTES.md
+              git log --pretty=format:'- %ad %h %s' --date=short >> RELEASE_NOTES.md || true
+            fi
+          fi
+          echo "Built release notes:"; sed -n '1,120p' RELEASE_NOTES.md
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Codex Xrays ${{ github.ref_name }}
+          body_path: RELEASE_NOTES.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
