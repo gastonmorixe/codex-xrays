@@ -18,6 +18,7 @@ from urllib.parse import urlparse
 SSE_JSON_RE = re.compile(r"SSE event:\s*(\{.*\})\s*$")
 LEVEL_RE = re.compile(r"\b(TRACE|DEBUG|INFO|WARN|ERROR|FATAL)\b")
 ISO_TS_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z")
+ANSI_RE = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
 FUNCTIONCALL_JSON_RE = re.compile(r"FunctionCall:\s*(\{.*\})\s*$")
 
 
@@ -139,7 +140,7 @@ def shorten_id(item_id: str, keep: int = 10) -> str:
 
 
 class VizApp:
-    def __init__(self, stdscr, file_path: str, from_start: bool = False, max_items: int = 200, lines_per_item: int = 5, pretty_preview: bool = False, pretty_mode: str = "summary", lines_expanded: int = 12):
+    def __init__(self, stdscr, file_path: str, from_start: bool = False, max_items: int = 200, lines_per_item: int = 5, pretty_preview: bool = False, pretty_mode: str = "summary", lines_expanded: int = 12, strip_ansi: bool = True):
         self.stdscr = stdscr
         self.tailer = FileTail(file_path, from_start=from_start)
         self.items: Dict[Tuple[str, int], ItemState] = {}
@@ -148,6 +149,7 @@ class VizApp:
         self.pretty_preview = pretty_preview
         self.pretty_mode = pretty_mode
         self.lines_expanded = lines_expanded
+        self.strip_ansi = strip_ansi
         self.recent_other: Deque[str] = deque(maxlen=50)
         self.event_count = 0
         self.delta_count = 0
@@ -207,6 +209,9 @@ class VizApp:
             return "…" if s else ""
         s1 = " ".join(s.split())
         return s1 if len(s1) <= limit else ("…" + s1[-(limit - 1):])
+
+    def _strip_ansi(self, s: str) -> str:
+        return ANSI_RE.sub("", s)
 
     def _wrap_text(self, text: str, width: int) -> list[str]:
         lines: list[str] = []
@@ -389,6 +394,12 @@ class VizApp:
         return self._ellipsize(s, width), attr
 
     def render_recent_line(self, ln: str, width: int) -> Tuple[str, int]:
+        # Sanitize ANSI if requested
+        try:
+            if self.strip_ansi:
+                ln = self._strip_ansi(ln)
+        except Exception:
+            pass
         # Try SSE JSON first
         obj = parse_sse_json(ln)
         if obj:
@@ -501,11 +512,13 @@ class VizApp:
                 st.append_delta(delta, seq, etype, out_idx)
                 return
             # Non-delta SSE we still note
-            self.recent_other.append(line)
+            ln = self._strip_ansi(line) if hasattr(self, 'strip_ansi') and self.strip_ansi else line
+            self.recent_other.append(ln)
             return
 
         # Not an SSE JSON line; keep a short tail
-        self.recent_other.append(line)
+        ln = self._strip_ansi(line) if hasattr(self, 'strip_ansi') and self.strip_ansi else line
+        self.recent_other.append(ln)
 
     def draw(self):
         self.stdscr.erase()
@@ -904,6 +917,7 @@ def main():
     parser.add_argument("--lines-expanded", type=int, default=12, help="Lines to show when an item is expanded with 'm'")
     parser.add_argument("--pretty-preview", action="store_true", help="Render emoji/parsed previews in list view (or set XRAYS_PRETTY=1)")
     parser.add_argument("--pretty-mode", choices=["summary", "hybrid"], help="Pretty preview style when enabled")
+    parser.add_argument("--keep-ansi", action="store_true", help="Do not strip ANSI color codes from recent logs")
     args = parser.parse_args()
 
     if not os.path.exists(args.file):
@@ -927,6 +941,11 @@ def main():
             args.pretty_mode = "hybrid"
         else:
             args.pretty_mode = "summary"
+    # ANSI stripping via env
+    if not args.keep_ansi:
+        env_keep = (os.environ.get("XRAYS_KEEP_ANSI") or "").strip().lower()
+        if env_keep in {"1", "true", "yes", "on"}:
+            args.keep_ansi = True
 
     def wrapped(stdscr):
         app = VizApp(
@@ -938,6 +957,7 @@ def main():
             pretty_preview=args.pretty_preview,
             pretty_mode=args.pretty_mode,
             lines_expanded=args.lines_expanded,
+            strip_ansi=(not args.keep_ansi),
         )
         app.loop()
 

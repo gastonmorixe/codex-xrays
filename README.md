@@ -81,6 +81,7 @@ XRAYS_PRETTY=1 XRAYS_PRETTY_MODE=summary python3 codexrays.py
 - `--lines-expanded <N>`: Lines to show when an item is expanded with `m`. Default: 12.
 - `--pretty-preview`: Enable emoji + parsed previews (can also set `XRAYS_PRETTY=1`).
 - `--pretty-mode <summary|hybrid>`: Summary only, or summary plus a raw excerpt beneath.
+- `--keep-ansi`: Do not strip ANSI color codes from recent logs (default strips them).
 
 
 ## What the UI Shows
@@ -92,6 +93,7 @@ XRAYS_PRETTY=1 XRAYS_PRETTY_MODE=summary python3 codexrays.py
 ## Configuration
 - `XRAYS_PRETTY=1`: Start with pretty previews enabled (same as `--pretty-preview`).
 - `XRAYS_PRETTY_MODE=summary|hybrid`: Choose preview style when enabled.
+- `XRAYS_KEEP_ANSI=1`: Keep ANSI color codes in recent logs (by default they are stripped).
 
 
 ## Parsing Logic
