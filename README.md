@@ -23,7 +23,15 @@ A fast, colorful, terminal UI that visualizes streaming Codex logs in real time.
   - macOS/Linux: comes with `curses`.
   - Windows: `pip install windows-curses`.
 
-- From the log directory:
+- Install (pipx):
+
+```bash
+pipx install git+https://github.com/gastonmorixe/codex-xrays
+# then run
+codex-xrays --file ./codex-tui.log --pretty-preview --pretty-mode hybrid
+```
+
+- From the repo/log directory (without install):
 
 ```bash
 python3 streamviz.py                                  # tail codex-tui.log from the end

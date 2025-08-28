@@ -1,0 +1,28 @@
+[project]
+name = "codex-xrays"
+version = "0.1.0"
+description = "A fast, colorful TUI to visualize streaming Codex logs in real time."
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+  { name = "Gaston Morixe" }
+]
+license = { text = "Proprietary" }
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Environment :: Console :: Curses",
+  "Topic :: Utilities",
+]
+
+[project.scripts]
+codex-xrays = "streamviz:main"
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+exclude = ["codex-tui.log", ".venv", "venv", "build", "dist"]
+
+[tool.black]
+line-length = 100
+target-version = ["py38"]
+
