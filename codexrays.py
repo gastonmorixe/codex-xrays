@@ -15,6 +15,9 @@ from typing import Deque, Dict, Optional, Tuple, Set
 from urllib.parse import urlparse
 
 
+# Version
+__version__ = "1.0.1"
+
 # Patterns and parsing helpers
 SSE_JSON_RE = re.compile(r"SSE event:\s*(\{.*\})\s*$")
 LEVEL_RE = re.compile(r"\b(TRACE|DEBUG|INFO|WARN|ERROR|FATAL)\b")
@@ -648,7 +651,7 @@ class VizApp:
         self.stdscr.erase()
         h, w = self.stdscr.getmaxyx()
         # Header (no path). Show FOLLOWING badge when follow mode is on.
-        header = " Codex Xrays 1.0"
+        header = f" 🛟 CodeXRays {__version__}"
         if self.follow_top:
             header += " [FOLLOWING]"
         header += " "

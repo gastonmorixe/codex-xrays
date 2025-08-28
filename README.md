@@ -1,4 +1,4 @@
-# ✨ Codex Xrays 1.0
+# 🛟 CodeXRays 1.0.1
 
 
 <img width="1046" height="638" alt="image" src="https://github.com/user-attachments/assets/4ce3cea3-7638-408b-9433-d6714d30ddd4" />
@@ -216,5 +216,5 @@ XRAYS_PRETTY=1 XRAYS_PRETTY_MODE=hybrid python3 codexrays.py --json-pretty
 Gaston Morixe - MIT License 2025
 ## Release
 - Update `CHANGELOG.md` with a new `## <version>` section.
-- Tag the version: `git tag -a 1.0.1 -m "Codex Xrays 1.0.1" && git push origin 1.0.1`.
+- Tag the version: `git tag -a 1.0.1 -m "CodeXRays 1.0.1" && git push origin 1.0.1`.
 - GitHub Actions publishes a release using the matching CHANGELOG section (falls back to commits if not found).

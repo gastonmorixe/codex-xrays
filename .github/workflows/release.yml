@@ -44,8 +44,7 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Codex Xrays ${{ github.ref_name }}
+          name: "🛟 CodeXRays ${{ github.ref_name }}"
           body_path: RELEASE_NOTES.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

@@ -2,14 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
-## 1.0 — 2025-08-28
+## 1.0.1 — 2025-08-28
 
 Highlights
 - Pretty previews with summary + live tail, no duplication, ANSI-safe recent logs.
 - Fast UI: instant ESC in full-screen, follow mode with top banner and T to jump.
 - Packaging + CI: pipx entrypoint (`codex-xrays`), Ruff lint, pytest smoke tests.
 - Default log path: `~/.codex/log/codex-tui.log`.
-- Rename to Codex Xrays 1.0, docs refreshed (README, AGENTS).
+- Rename to CodeXRays 1.0.1, docs refreshed (README, AGENTS).
 
 Commits (recent first)
 - 2025-08-27 d3bacca feat(ui): follow banner and T to jump; leave follow on scroll; lower ESC delay
@@ -23,4 +23,3 @@ Commits (recent first)
 - 2025-08-27 9ae1373 chore(lint): fix ruff issues
 - 2025-08-27 39c6d83 build(ci): packaging, CI, tests, repo metadata
 - 2025-08-27 01e755b feat: contributor guide and UI polish
-

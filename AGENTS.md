@@ -1,6 +1,6 @@
 # Repository Guidelines
 
-Contributor guide for Codex Xrays 1.0 — a small Python TUI that tails and visualizes `codex-tui.log`. Keep changes minimal, reversible, and well‑described.
+Contributor guide for CodeXRays 1.0.1 — a small Python TUI that tails and visualizes `codex-tui.log`. Keep changes minimal, reversible, and well‑described.
 
 ## Project Structure & Module Organization
 - `codexrays.py`: Main app (tailing, parsing, rendering).
