@@ -1,6 +1,4 @@
 import os
-import re
-
 import streamviz as sv
 
 
@@ -29,4 +27,3 @@ def test_summarize_apply_patch_diffstat():
     # Has counts and filenames
     assert "+" in out and "✏️" in out
     assert "foo.txt" in out or "bar.py" in out
-

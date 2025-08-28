@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import curses
-import errno
 import io
 import json
 import os
@@ -9,7 +8,7 @@ import re
 import signal
 import sys
 import time
-from collections import defaultdict, deque
+from collections import deque
 from dataclasses import dataclass, field
 from typing import Deque, Dict, Optional, Tuple, Set
 from urllib.parse import urlparse
@@ -524,7 +523,6 @@ class VizApp:
             f"events:{self.event_count} deltas:{self.delta_count} eps:{self.eps:0.1f} "
             f"items:{len(self.items)} filt:{filt} pretty:{pretty}"
         )
-        head_str = header + (" ".join([""] * 2))
         head_line = (header + (" " * max(1, w - len(header) - len(stats) - 1)) + stats)[: max(0, w - 1)]
         if curses.has_colors():
             self.stdscr.addnstr(0, 0, head_line, w - 1, curses.color_pair(1) | curses.A_BOLD)
