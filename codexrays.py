@@ -929,7 +929,8 @@ class VizApp:
 
 def main():
     parser = argparse.ArgumentParser(description="Real-time streaming log visualizer for Codex TUI logs.")
-    parser.add_argument("--file", "-f", default=os.path.join(os.getcwd(), "codex-tui.log"), help="Path to log file to follow")
+    default_log = os.path.expanduser("~/.codex/log/codex-tui.log")
+    parser.add_argument("--file", "-f", default=default_log, help=f"Path to log file to follow (default: {default_log})")
     parser.add_argument("--from-start", action="store_true", help="Read from start instead of tailing from end")
     parser.add_argument("--max-items", type=int, default=200, help="Max distinct item_id streams to track")
     parser.add_argument("--lines-per-item", "-L", type=int, default=5, help="Maximum wrapped lines to show per entry in list view")

@@ -40,13 +40,14 @@ $ RUST_LOG=codex_core=trace,codex_exec=debug,codex_mcp_client=debug \
 ```bash
 pipx install git+https://github.com/gastonmorixe/codex-xrays
 # then run (installed CLI):
-codex-xrays --file ./codex-tui.log --pretty-preview --pretty-mode hybrid
+# uses default log at ~/.codex/log/codex-tui.log
+codex-xrays --pretty-preview --pretty-mode hybrid
 ```
 
 - From the repo/log directory (without install):
 
 ```bash
-python3 codexrays.py                                  # tail codex-tui.log from the end
+python3 codexrays.py                                  # tails ~/.codex/log/codex-tui.log
 python3 codexrays.py --from-start                     # read from beginning
 python3 codexrays.py -f ./codex-tui.log -L 8 --max-items 300
 python3 codexrays.py --pretty-preview                 # emoji + parsed previews
@@ -74,7 +75,7 @@ XRAYS_PRETTY=1 XRAYS_PRETTY_MODE=summary python3 codexrays.py
 
 ## Command‑line Options
 
-- `-f, --file <path>`: Path to the log file. Default: `./codex-tui.log`.
+- `-f, --file <path>`: Path to the log file. Default: `~/.codex/log/codex-tui.log`.
 - `--from-start`: Read from the start of the file (otherwise tail from end).
 - `--max-items <N>`: Max distinct `(item_id, output_index)` streams to keep in memory. Default: 200.
 - `-L, --lines-per-item <N>`: Maximum wrapped lines to render per entry in list view. Default: 5.
