@@ -478,6 +478,22 @@ class VizApp:
         s = f"{badge} {ln_clean}"
         return self._ellipsize(s, width), attr
 
+    def preview_lines_for_pretty(self, st: ItemState, width: int, limit: int) -> list[str]:
+        summary, _a = self.get_pretty_preview(st, width)
+        summary_lines = self._wrap_text(summary, max(1, width))
+        if self.pretty_mode == 'summary' or limit <= len(summary_lines):
+            return summary_lines[: max(1, limit)]
+        remain = max(0, limit - len(summary_lines))
+        raw = st.snapshot().replace('\r', '').replace('\n', ' ')
+        shown_chars = sum(len(l) for l in summary_lines)
+        raw_after = raw[shown_chars:] if shown_chars < len(raw) else ''
+        tail_chars = width * remain
+        tail = self._tail_ellipsize(raw_after, tail_chars)
+        tail_lines = self._wrap_text(tail, max(1, width))
+        if len(tail_lines) > remain:
+            tail_lines = tail_lines[-remain:]
+        return summary_lines + tail_lines
+
     def badge_for_level(self, level: str) -> Tuple[str, int]:
         lvl = level.upper()
         if not curses.has_colors():
@@ -574,15 +590,18 @@ class VizApp:
         # Precompute how many rows each item will consume (<= lines_per_item)
         def wrap_lines_for(st: ItemState, first_prefix_len: int, width: int, limit: int) -> list[str]:
             if self.pretty_preview:
-                # Build explicit summary + tail lines so the newest text is visible.
+                # Build explicit summary + live tail lines so the newest text is visible.
                 summary, _a = self.get_pretty_preview(st, width)
                 summary_lines = self._wrap_text(summary, max(1, width))
                 if self.pretty_mode == 'summary' or limit <= len(summary_lines):
                     return summary_lines[: max(1, limit)]
                 remain = max(0, limit - len(summary_lines))
                 raw = st.snapshot().replace('\r', '').replace('\n', ' ')
+                # Avoid duplicating what was already shown in summary by skipping that many visible chars
+                shown_chars = sum(len(l) for l in summary_lines)
+                raw_after = raw[shown_chars:] if shown_chars < len(raw) else ''
                 tail_chars = width * remain
-                tail = self._tail_ellipsize(raw, tail_chars)
+                tail = self._tail_ellipsize(raw_after, tail_chars)
                 tail_lines = self._wrap_text(tail, max(1, width))
                 if len(tail_lines) > remain:
                     tail_lines = tail_lines[-remain:]

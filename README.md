@@ -138,6 +138,9 @@ XRAYS_PRETTY=1 XRAYS_PRETTY_MODE=summary python3 codexrays.py
 
 ## Troubleshooting
 
+## Preview Behavior
+- Pretty mode shows a one-line summary followed by live tail lines, so the newest text is always visible. Increase `-L` or press `m` to see more.
+- Recent logs strip ANSI color codes by default for readability; use `--keep-ansi` if your logs rely on terminal colors.
 - No colors: ensure your terminal supports ANSI colors; `TERM` should be something like `xterm-256color`.
 - Windows: install `windows-curses` (`pip install windows-curses`). Run from a Unicode‑capable terminal.
 - Large files: prefer tail mode (default). Use `--from-start` only when needed.
