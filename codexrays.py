@@ -168,6 +168,10 @@ class VizApp:
         self.type_filter: Optional[str] = None  # values: None, 'args', 'out', 'err'
 
     def setup_curses(self):
+        try:
+            curses.set_escdelay(25)
+        except Exception:
+            pass
         curses.curs_set(0)
         self.stdscr.nodelay(True)
         self.stdscr.keypad(True)
