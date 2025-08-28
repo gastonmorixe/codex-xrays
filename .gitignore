@@ -23,6 +23,7 @@ build/
 # Logs & exports
 codex-tui.log
 streamviz_export_*.txt
+codexrays_export_*.txt
 
 # Environment files
 .env

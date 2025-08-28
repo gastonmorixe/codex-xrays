@@ -3,20 +3,20 @@
 Contributor guide for Codex Xrays 1.0 — a small Python TUI that tails and visualizes `codex-tui.log`. Keep changes minimal, reversible, and well‑described.
 
 ## Project Structure & Module Organization
-- `streamviz.py`: Main app (tailing, parsing, rendering).
+- `codexrays.py`: Main app (tailing, parsing, rendering).
 - `README.md`: Usage, keybindings, and options.
 - `codex-tui.log`: Sample/active log (can be large; avoid noisy commits).
-- `tests/` (when added): Pytest suite mirroring functions in `streamviz.py`.
+- `tests/` (when added): Pytest suite mirroring functions in `codexrays.py`.
 
 Example:
 ```
-./streamviz.py  ./README.md  ./codex-tui.log  [./tests/]
+./codexrays.py  ./README.md  ./codex-tui.log  [./tests/]
 ```
 
 ## Build, Test, and Development Commands
 - Setup (optional venv): `python3 -m venv .venv && source .venv/bin/activate`.
-- Run locally: `python3 streamviz.py [--from-start] [-f ./codex-tui.log] [-L 8] [--pretty-preview] [--pretty-mode hybrid|summary]`.
-- Env default: `XRAYS_PRETTY=1 python3 streamviz.py` to auto-enable pretty previews.
+- Run locally: `python3 codexrays.py [--from-start] [-f ./codex-tui.log] [-L 8] [--pretty-preview] [--pretty-mode hybrid|summary]`.
+- Env default: `XRAYS_PRETTY=1 python3 codexrays.py` to auto-enable pretty previews.
  - Mode via env: `XRAYS_PRETTY_MODE=hybrid`.
 - Windows curses: `pip install windows-curses`.
 - Lint/format (recommended): `ruff check . && black .`.

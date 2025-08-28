@@ -817,7 +817,7 @@ class VizApp:
         item_id, out_idx = key
         safe_id = re.sub(r"[^A-Za-z0-9_.-]", "_", item_id)
         ts = time.strftime('%Y%m%d_%H%M%S')
-        path = f"streamviz_export_{safe_id}_{out_idx}_{ts}.txt"
+        path = f"codexrays_export_{safe_id}_{out_idx}_{ts}.txt"
         try:
             with open(path, 'w', encoding='utf-8') as f:
                 f.write(st.snapshot())

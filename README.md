@@ -40,20 +40,20 @@ $ RUST_LOG=codex_core=trace,codex_exec=debug,codex_mcp_client=debug \
 ```bash
 pipx install git+https://github.com/gastonmorixe/codex-xrays
 # then run
-codex-xrays --file ./codex-tui.log --pretty-preview --pretty-mode hybrid
+codexrays --file ./codex-tui.log --pretty-preview --pretty-mode hybrid
 ```
 
 - From the repo/log directory (without install):
 
 ```bash
-python3 streamviz.py                                  # tail codex-tui.log from the end
-python3 streamviz.py --from-start                     # read from beginning
-python3 streamviz.py -f ./codex-tui.log -L 8 --max-items 300
-python3 streamviz.py --pretty-preview                 # emoji + parsed previews
-python3 streamviz.py --pretty-preview --pretty-mode hybrid   # summary + raw excerpt
+python3 codexrays.py                                  # tail codex-tui.log from the end
+python3 codexrays.py --from-start                     # read from beginning
+python3 codexrays.py -f ./codex-tui.log -L 8 --max-items 300
+python3 codexrays.py --pretty-preview                 # emoji + parsed previews
+python3 codexrays.py --pretty-preview --pretty-mode hybrid   # summary + raw excerpt
 # or via env var (auto-on):
-XRAYS_PRETTY=1 python3 streamviz.py
-XRAYS_PRETTY=1 XRAYS_PRETTY_MODE=summary python3 streamviz.py
+XRAYS_PRETTY=1 python3 codexrays.py
+XRAYS_PRETTY=1 XRAYS_PRETTY_MODE=summary python3 codexrays.py
 ```
 
 
@@ -64,7 +64,7 @@ XRAYS_PRETTY=1 XRAYS_PRETTY_MODE=summary python3 streamviz.py
 - Enter: open full‑screen detail view of the selected entry
 - x: pin/unpin selected entry (pinned items stay on top)
 - f: cycle filter (all → args.delta → output.delta → error → all)
-- e: export selected entry content to a `streamviz_export_*.txt` file
+- e: export selected entry content to a `codexrays_export_*.txt` file
 - b: cycle pretty mode (off → summary → hybrid)
 - m: toggle more lines for selected item (uses `--lines-expanded`)
 - p: pause/resume tailing
@@ -124,7 +124,7 @@ XRAYS_PRETTY=1 XRAYS_PRETTY_MODE=summary python3 streamviz.py
 
 ## Export
 
-- `e` writes the selected item’s content to `streamviz_export_<id>_<idx>_<timestamp>.txt` in the current directory.
+- `e` writes the selected item’s content to `codexrays_export_<id>_<idx>_<timestamp>.txt` in the current directory.
 
 
 ## Performance Notes

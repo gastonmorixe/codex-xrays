@@ -15,7 +15,15 @@ classifiers = [
 ]
 
 [project.scripts]
-codex-xrays = "streamviz:main"
+codex-xrays = "codexrays:main"
+codexrays = "codexrays:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["codexrays"]
 
 [tool.ruff]
 line-length = 100
@@ -25,4 +33,3 @@ exclude = ["codex-tui.log", ".venv", "venv", "build", "dist"]
 [tool.black]
 line-length = 100
 target-version = ["py38"]
-

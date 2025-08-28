@@ -1,5 +1,5 @@
 import os
-import streamviz as sv
+import codexrays as sv
 
 
 def test_parse_sse_json_basic():
