@@ -1,0 +1,29 @@
+# OS & editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# Logs & exports
+codex-tui.log
+streamviz_export_*.txt
+
+# Environment files
+.env
+.env.*
