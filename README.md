@@ -39,8 +39,8 @@ $ RUST_LOG=codex_core=trace,codex_exec=debug,codex_mcp_client=debug \
 
 ```bash
 pipx install git+https://github.com/gastonmorixe/codex-xrays
-# then run
-codexrays --file ./codex-tui.log --pretty-preview --pretty-mode hybrid
+# then run (installed CLI):
+codex-xrays --file ./codex-tui.log --pretty-preview --pretty-mode hybrid
 ```
 
 - From the repo/log directory (without install):

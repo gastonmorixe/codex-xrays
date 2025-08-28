@@ -16,7 +16,6 @@ classifiers = [
 
 [project.scripts]
 codex-xrays = "codexrays:main"
-codexrays = "codexrays:main"
 
 [build-system]
 requires = ["setuptools>=61.0"]

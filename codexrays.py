@@ -208,6 +208,18 @@ class VizApp:
         s1 = " ".join(s.split())
         return s1 if len(s1) <= limit else ("…" + s1[-(limit - 1):])
 
+    def _wrap_text(self, text: str, width: int) -> list[str]:
+        lines: list[str] = []
+        if width <= 0:
+            return [text]
+        for segment in text.replace('\r', '').split('\n'):
+            s = segment
+            while len(s) > width:
+                lines.append(s[:width])
+                s = s[width:]
+            lines.append(s)
+        return lines
+
     def _jsonish_extract(self, text: str) -> dict:
         # Heuristic extraction from possibly partial JSON strings
         src = text[-2000:].strip()  # look at tail where args accumulate
@@ -338,11 +350,6 @@ class VizApp:
                 if curses.has_colors():
                     attr = curses.color_pair(2)
                 summary = self._ellipsize("  ·  ".join(parts), width)
-                if self.pretty_mode == "hybrid":
-                    raw_tail = " ".join(raw.replace("\n", " ").split())
-                    budget = max(width * max(1, self.lines_per_item - 1), width)
-                    excerpt = self._tail_ellipsize(raw_tail, budget)
-                    return summary + "\n" + excerpt, attr
                 return summary, attr
         # Output text / explanations → decorate
         # Code fences
@@ -350,9 +357,6 @@ class VizApp:
             if curses.has_colors():
                 attr = curses.color_pair(5)
             summary = self._ellipsize("🧩 code block", width)
-            if self.pretty_mode == "hybrid" and raw:
-                excerpt = self._tail_ellipsize(s, max(width * max(1, self.lines_per_item - 1), width))
-                return summary + "\n" + excerpt, attr
             return summary, attr
         # Obvious errors/warnings
         if re.search(r"\b(error|exception|traceback|failed)\b", s, re.I):
@@ -375,18 +379,12 @@ class VizApp:
             if curses.has_colors():
                 attr = curses.color_pair(5)
             summary = self._ellipsize(f"🔗 {host} — {s}", width)
-            if self.pretty_mode == "hybrid" and raw:
-                excerpt = self._tail_ellipsize(s, max(width * max(1, self.lines_per_item - 1), width))
-                return summary + "\n" + excerpt, attr
             return summary, attr
         # Default speech bubble
         if tlabel.endswith("output_text.delta"):
             if curses.has_colors():
                 attr = curses.color_pair(3)
             summary = self._ellipsize("💬 " + s, width)
-            if self.pretty_mode == "hybrid" and s:
-                excerpt = self._tail_ellipsize(s, max(width * max(1, self.lines_per_item - 1), width))
-                return summary + "\n" + excerpt, attr
             return summary, attr
         return self._ellipsize(s, width), attr
 
@@ -563,30 +561,23 @@ class VizApp:
         # Precompute how many rows each item will consume (<= lines_per_item)
         def wrap_lines_for(st: ItemState, first_prefix_len: int, width: int, limit: int) -> list[str]:
             if self.pretty_preview:
-                text, _attr = self.get_pretty_preview(st, width)
-            else:
-                text = st.snapshot()
-            # Split by newlines then wrap hard at width
-            lines: list[str] = []
-            effective_width = max(1, width)
-            # Replace carriage returns to avoid oddities
-            for segment in text.replace('\r', '').split('\n'):
-                s = segment
-                while len(s) > effective_width:
-                    lines.append(s[:effective_width])
-                    s = s[effective_width:]
-                lines.append(s)
-            # Limit to N lines.
+                # Build explicit summary + tail lines so the newest text is visible.
+                summary, _a = self.get_pretty_preview(st, width)
+                summary_lines = self._wrap_text(summary, max(1, width))
+                if self.pretty_mode == 'summary' or limit <= len(summary_lines):
+                    return summary_lines[: max(1, limit)]
+                remain = max(0, limit - len(summary_lines))
+                raw = st.snapshot().replace('\r', '').replace('\n', ' ')
+                tail_chars = width * remain
+                tail = self._tail_ellipsize(raw, tail_chars)
+                tail_lines = self._wrap_text(tail, max(1, width))
+                if len(tail_lines) > remain:
+                    tail_lines = tail_lines[-remain:]
+                return summary_lines + tail_lines
+            # Plain mode: wrap and show last N lines
+            lines = self._wrap_text(st.snapshot(), max(1, width))
             if len(lines) > limit:
-                if self.pretty_preview:
-                    # Keep first summary line, then tail of remaining lines to preserve recency.
-                    head = lines[:1]
-                    tail_needed = max(0, limit - 1)
-                    tail = lines[-tail_needed:] if tail_needed > 0 else []
-                    lines = head + tail
-                else:
-                    # Normal mode: show last N lines
-                    lines = lines[-limit:]
+                lines = lines[-limit:]
             return lines
 
         # Determine block heights and build view blocks
@@ -632,7 +623,7 @@ class VizApp:
                 continue
             tlabel = st.type_label
             if self.pretty_preview:
-                _preview_text, attr = self.get_pretty_preview(st, avail)
+                _summary, attr = self.get_pretty_preview(st, avail)
             else:
                 attr = self.color_for_type(tlabel)
             sel = (key == self.selected_key)
