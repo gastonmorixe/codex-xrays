@@ -1,6 +1,18 @@
 # Codex Xrays 1.0
 
+
+<img width="1046" height="638" alt="image" src="https://github.com/user-attachments/assets/4ce3cea3-7638-408b-9433-d6714d30ddd4" />
+
 A fast, colorful, terminal UI that visualizes streaming Codex logs in real time. It tails `codex-tui.log`, parses SSE events, aggregates fast deltas by `item_id`, and renders a live dashboard with multiline entries, selection, pinning, filters, and a full‑screen detail view.
+
+
+```bash
+# Add the following RUST_LOG env var so codex 
+# saves detailed log ~/.codex/log/codex-tui.log 
+
+$ RUST_LOG=codex_core=trace,codex_exec=debug,codex_mcp_client=debug \
+   codex -m gpt-5 
+```
 
 > Built to handle very rapid, tiny delta events and show them as coherent streams like:
 >
@@ -188,4 +200,4 @@ XRAYS_PRETTY=1 XRAYS_PRETTY_MODE=summary python3 streamviz.py
 
 ## License
 
-This repository does not include a license. If you plan to redistribute, please add an appropriate license first.
+Gaston Morixe - MIT License 2025
