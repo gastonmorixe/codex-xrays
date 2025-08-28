@@ -151,6 +151,9 @@ class VizApp:
         self.lines_expanded = lines_expanded
         self.strip_ansi = strip_ansi
         self.recent_other: Deque[str] = deque(maxlen=50)
+        # Follow mode: when True, keep viewport at newest (top). When False, show banner if new items arrive.
+        self.follow_top: bool = True
+        self.new_since: int = 0
         self.event_count = 0
         self.delta_count = 0
         self.start_time = time.time()
@@ -530,6 +533,8 @@ class VizApp:
                         oldest_key = min(self.items, key=lambda k: self.items[k].updated_at)
                         self.items.pop(oldest_key, None)
                 st.append_delta(delta, seq, etype, out_idx)
+                if not self.follow_top:
+                    self.new_since += 1
                 return
             # Non-delta SSE we still note
             ln = self._strip_ansi(line) if hasattr(self, 'strip_ansi') and self.strip_ansi else line
@@ -560,8 +565,12 @@ class VizApp:
         else:
             self.stdscr.addnstr(0, 0, head_line, w - 1, curses.A_REVERSE)
 
+        # Follow banner if not following and we have unseen updates
+        banner: Optional[str] = None
+        if not self.follow_top and self.new_since > 0:
+            banner = f" ({self.new_since}) newer logs -> press T to follow"
         # Main area for items
-        top = 1
+        top = 2 if banner else 1
         bottom = h - 5
         area_h = max(0, bottom - top + 1)
 
@@ -680,6 +689,13 @@ class VizApp:
                 row += 1
             i += 1
 
+        # Follow banner row
+        if banner:
+            try:
+                self.stdscr.addnstr(1, 0, banner[: max(0, w - 1)], w - 1, curses.A_BOLD)
+            except curses.error:
+                pass
+
         # Secondary area for recent non-SSE lines
         help_y = h - 2
         recent_y = h - 6
@@ -711,7 +727,7 @@ class VizApp:
 
         # Help/footer
         # Help/footer
-        help_text = " q:quit  ↑/↓:select  ↩:open  x:pin  e:export  f:filter  c:clear  p:pause  s:toggle start  space:refresh  b:pretty-mode  m:more "
+        help_text = " q:quit  ↑/↓:select  ↩:open  x:pin  e:export  f:filter  c:clear  p:pause  s:toggle start  T:follow  space:refresh  b:pretty-mode  m:more "
         try:
             self.stdscr.addnstr(help_y, 0, help_text[: max(0, w - 1)], w - 1, curses.A_DIM)
         except curses.error:
@@ -747,8 +763,10 @@ class VizApp:
                     self.tailer._ino = None
                     self.tailer._pos = 0
                 elif ch in (curses.KEY_UP, ord('k')):
+                    self.follow_top = False
                     self._move_selection(-1)
                 elif ch in (curses.KEY_DOWN, ord('j')):
+                    self.follow_top = False
                     self._move_selection(1)
                 elif ch in (10, 13):
                     # Enter -> open detail view
@@ -784,6 +802,16 @@ class VizApp:
                             self.expanded.remove(self.selected_key)
                         else:
                             self.expanded.add(self.selected_key)
+                elif ch in (ord('T'),):
+                    # Follow newest: jump to top and reset counter
+                    self.follow_top = True
+                    self.new_since = 0
+                    # Move selection to newest item
+                    items_seq = list(self.items.items())
+                    items_seq.sort(key=lambda kv: kv[1].updated_at, reverse=True)
+                    if items_seq:
+                        self.selected_key = items_seq[0][0]
+                    self.list_scroll = 0
 
             # Read lines
             if not self.paused:
@@ -815,6 +843,8 @@ class VizApp:
     def _move_selection(self, delta_blocks: int):
         if not self.items:
             return
+        # User-initiated selection movement implies leaving follow mode
+        self.follow_top = False
         def type_matches(lbl: str) -> bool:
             if not self.type_filter:
                 return True

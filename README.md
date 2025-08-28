@@ -68,6 +68,7 @@ XRAYS_PRETTY=1 XRAYS_PRETTY_MODE=summary python3 codexrays.py
 - e: export selected entry content to a `codexrays_export_*.txt` file
 - b: cycle pretty mode (off → summary → hybrid)
 - m: toggle more lines for selected item (uses `--lines-expanded`)
+- T: jump to newest and resume follow (shows banner when paused)
 - p: pause/resume tailing
 - s: toggle "from start" mode and reopen the file
 - Space: manual refresh
