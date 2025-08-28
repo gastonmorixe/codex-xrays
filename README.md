@@ -69,6 +69,7 @@ XRAYS_PRETTY=1 XRAYS_PRETTY_MODE=summary python3 codexrays.py
 - b: cycle pretty mode (off → summary → hybrid)
 - m: toggle more lines for selected item (uses `--lines-expanded`)
 - T: jump to newest and resume follow (shows banner when paused)
+- When paused and new items arrive, a top banner shows “(X) newer logs — press T to follow”.
 - p: pause/resume tailing
 - s: toggle "from start" mode and reopen the file
 - Space: manual refresh
@@ -88,7 +89,7 @@ XRAYS_PRETTY=1 XRAYS_PRETTY_MODE=summary python3 codexrays.py
 
 ## What the UI Shows
 
-- Header: filename, counters (events, deltas), EPS (events/second), total items, active filter, and `pretty:off|summary|hybrid` indicator.
+- Header: app name with a `[FOLLOWING]` badge when active, plus counters (events, deltas), EPS (events/second), total items, active filter, and `pretty:off|summary|hybrid`.
 - Main list: most recently updated entries first. Each entry shows `short_item_id#output_index:` plus up to `N` wrapped lines of the latest content. Colors map to event types.
 - Recent logs: compact tail of non‑delta events. With pretty mode, SSE/FunctionCall lines are summarized (🧰 tools, 🔎 queries, 🔗 hosts, 📄 files, 🛠️ commands, 💬 text).
 

@@ -192,8 +192,14 @@ class VizApp:
             curses.init_pair(8, curses.COLOR_BLACK, curses.COLOR_YELLOW) # warn badge
             curses.init_pair(9, curses.COLOR_BLACK, curses.COLOR_RED)    # error badge
 
+    def _has_colors_safe(self) -> bool:
+        try:
+            return curses.has_colors()
+        except curses.error:
+            return False
+
     def color_for_type(self, tlabel: str) -> int:
-        if not curses.has_colors():
+        if not self._has_colors_safe():
             return curses.A_NORMAL
         if tlabel.endswith("function_call_arguments.delta"):
             return curses.color_pair(2)
@@ -287,10 +293,19 @@ class VizApp:
     def _summarize_apply_patch(self, text: str, width: int) -> Optional[str]:
         if "apply_patch" not in text and "*** Begin Patch" not in text:
             return None
-        m = re.search(r"\*\*\* Begin Patch(.*)\*\*\* End Patch", text, re.S)
-        if not m:
+        cand = text
+        # If we see escaped newlines but no real newlines, unescape a lightweight view
+        if "\\n" in cand and "\n" not in cand:
+            cand = cand.replace("\\r", "").replace("\\n", "\n").replace('\\"', '"')
+        i0 = cand.find("*** Begin Patch")
+        if i0 == -1:
             return None
-        body = m.group(1)
+        i1 = cand.find("*** End Patch", i0)
+        partial = False
+        if i1 == -1:
+            partial = True
+            i1 = len(cand)
+        body = cand[i0 + len("*** Begin Patch"): i1]
         add = update = delete = 0
         plus = minus = 0
         files: list[tuple[str, str]] = []
@@ -319,6 +334,8 @@ class VizApp:
             shown = " ".join(f"{mark} {name}" for mark, name in files[:3])
             extra = " …" if len(files) > 3 else ""
             head += " · " + self._ellipsize(shown + extra, max(12, width))
+        if partial:
+            head += " (partial)"
         return head
 
     def get_pretty_preview(self, st: ItemState, width: int) -> Tuple[str, int]:
@@ -359,14 +376,14 @@ class VizApp:
                 parts.append("🧰 args:" + ",".join(info["keys"]))
             if parts:
                 # Color: cyan for args/tool summaries
-                if curses.has_colors():
+                if self._has_colors_safe():
                     attr = curses.color_pair(2)
                 summary = self._ellipsize("  ·  ".join(parts), width)
                 return summary, attr
         # Output text / explanations → decorate
         # Code fences
         if s.startswith("```"):
-            if curses.has_colors():
+            if self._has_colors_safe():
                 attr = curses.color_pair(5)
             summary = self._ellipsize("🧩 code block", width)
             return summary, attr
@@ -377,7 +394,7 @@ class VizApp:
             summary = self._ellipsize("❌ " + s, width)
             return summary, attr
         if re.search(r"\b(warn|deprecate)\w*\b", s, re.I):
-            if curses.has_colors():
+            if self._has_colors_safe():
                 attr = curses.color_pair(5)
             summary = self._ellipsize("⚠️ " + s, width)
             return summary, attr
@@ -394,7 +411,12 @@ class VizApp:
             return summary, attr
         # Default speech bubble
         if tlabel.endswith("output_text.delta"):
-            if curses.has_colors():
+            # Summarize patch envelopes even when streaming in text deltas
+            if "*** Begin Patch" in s or "apply_patch" in s:
+                p = self._summarize_apply_patch(s, width)
+                if p:
+                    return self._ellipsize(p, width), attr
+            if self._has_colors_safe():
                 attr = curses.color_pair(3)
             summary = self._ellipsize("💬 " + s, width)
             return summary, attr
@@ -448,6 +470,10 @@ class VizApp:
                 return self._ellipsize(s, width), attr
             if t.endswith("output_text.delta"):
                 delta = (obj.get("delta") or "").strip()
+                if "*** Begin Patch" in delta or "apply_patch" in delta:
+                    ps = self._summarize_apply_patch(delta, width)
+                    if ps:
+                        return self._ellipsize((prefix + ps).strip(), width), attr
                 s = prefix + ("💬 " + delta if delta else "💬 …")
                 return self._ellipsize(s, width), attr
             if "error" in t:
@@ -492,7 +518,7 @@ class VizApp:
             return summary_lines[: max(1, limit)]
         remain = max(0, limit - len(summary_lines))
         raw = st.snapshot().replace('\r', '').replace('\n', ' ')
-        shown_chars = sum(len(l) for l in summary_lines)
+        shown_chars = sum(len(s) for s in summary_lines)
         raw_after = raw[shown_chars:] if shown_chars < len(raw) else ''
         tail_chars = width * remain
         tail = self._tail_ellipsize(raw_after, tail_chars)
@@ -503,7 +529,7 @@ class VizApp:
 
     def badge_for_level(self, level: str) -> Tuple[str, int]:
         lvl = level.upper()
-        if not curses.has_colors():
+        if not self._has_colors_safe():
             return f"[{lvl}]", curses.A_BOLD
         if lvl in ("ERROR", "FATAL"):
             return f" {lvl} ", curses.color_pair(9) | curses.A_BOLD
@@ -527,14 +553,14 @@ class VizApp:
                 if not st:
                     st = ItemState(item_id=item_id)
                     self.items[key] = st
+                    if not self.follow_top:
+                        self.new_since += 1
                     # Bound number of items
                     if len(self.items) > self.max_items:
                         # Drop the stalest item
                         oldest_key = min(self.items, key=lambda k: self.items[k].updated_at)
                         self.items.pop(oldest_key, None)
                 st.append_delta(delta, seq, etype, out_idx)
-                if not self.follow_top:
-                    self.new_since += 1
                 return
             # Non-delta SSE we still note
             ln = self._strip_ansi(line) if hasattr(self, 'strip_ansi') and self.strip_ansi else line
@@ -548,8 +574,11 @@ class VizApp:
     def draw(self):
         self.stdscr.erase()
         h, w = self.stdscr.getmaxyx()
-        # Header
-        header = f" Codex Xrays 1.0 — {os.path.basename(self.tailer.path)} "
+        # Header (no path). Show FOLLOWING badge when follow mode is on.
+        header = " Codex Xrays 1.0"
+        if self.follow_top:
+            header += " [FOLLOWING]"
+        header += " "
         filt = self.type_filter if self.type_filter else 'all'
         if not self.pretty_preview:
             pretty = 'off'
@@ -561,6 +590,7 @@ class VizApp:
         )
         head_line = (header + (" " * max(1, w - len(header) - len(stats) - 1)) + stats)[: max(0, w - 1)]
         if curses.has_colors():
+            # Always render header in blue; following indicated by badge
             self.stdscr.addnstr(0, 0, head_line, w - 1, curses.color_pair(1) | curses.A_BOLD)
         else:
             self.stdscr.addnstr(0, 0, head_line, w - 1, curses.A_REVERSE)
@@ -594,7 +624,12 @@ class VizApp:
 
         # Maintain selection across frames
         keys_only = [k for k, _ in ordered]
-        if self.selected_key not in keys_only and keys_only:
+        if self.follow_top and keys_only:
+            # Always select newest and keep viewport at top
+            self.selected_key = keys_only[0]
+            self.list_scroll = 0
+            self.new_since = 0
+        elif self.selected_key not in keys_only and keys_only:
             self.selected_key = keys_only[0]
 
         # Ensure selection visibility by adjusting list_scroll
@@ -611,7 +646,7 @@ class VizApp:
                 remain = max(0, limit - len(summary_lines))
                 raw = st.snapshot().replace('\r', '').replace('\n', ' ')
                 # Avoid duplicating what was already shown in summary by skipping that many visible chars
-                shown_chars = sum(len(l) for l in summary_lines)
+                shown_chars = sum(len(s) for s in summary_lines)
                 raw_after = raw[shown_chars:] if shown_chars < len(raw) else ''
                 tail_chars = width * remain
                 tail = self._tail_ellipsize(raw_after, tail_chars)
@@ -763,10 +798,15 @@ class VizApp:
                     self.tailer._ino = None
                     self.tailer._pos = 0
                 elif ch in (curses.KEY_UP, ord('k')):
-                    self.follow_top = False
+                    if self.follow_top:
+                        # leaving follow mode
+                        self.follow_top = False
+                        self.new_since = 0
                     self._move_selection(-1)
                 elif ch in (curses.KEY_DOWN, ord('j')):
-                    self.follow_top = False
+                    if self.follow_top:
+                        self.follow_top = False
+                        self.new_since = 0
                     self._move_selection(1)
                 elif ch in (10, 13):
                     # Enter -> open detail view
