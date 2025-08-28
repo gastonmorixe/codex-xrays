@@ -1,4 +1,4 @@
-# Codex XRays 1.0
+# 🛟 CodeXRays 1.0 (alpha)
 
 
 <img width="1046" height="638" alt="image" src="https://github.com/user-attachments/assets/4ce3cea3-7638-408b-9433-d6714d30ddd4" />
