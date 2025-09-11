@@ -1037,7 +1037,9 @@ class VizApp:
         # Robust filename sanitization to prevent path traversal
         safe_id = re.sub(r"[^A-Za-z0-9_-]", "_", item_id)[:50]  # Limit length
         safe_id = safe_id.strip("_.-")  # Remove leading/trailing problematic chars
-        if not safe_id or safe_id.startswith('.'):  # Fallback if everything was filtered out or starts with dot
+        if not safe_id or safe_id.startswith(
+            "."
+        ):  # Fallback if everything was filtered out or starts with dot
             safe_id = "item"
         ts = time.strftime("%Y%m%d_%H%M%S")
         filename = f"codexrays_export_{safe_id}_{out_idx}_{ts}.txt"
