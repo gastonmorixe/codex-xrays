@@ -11,7 +11,7 @@ import time
 import textwrap
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Deque, Dict, Optional, Tuple, Set
+from typing import Deque, Dict, List, Optional, Tuple, Set
 from urllib.parse import urlparse
 
 
@@ -144,7 +144,19 @@ def shorten_id(item_id: str, keep: int = 10) -> str:
 
 
 class VizApp:
-    def __init__(self, stdscr, file_path: str, from_start: bool = False, max_items: int = 200, lines_per_item: int = 5, pretty_preview: bool = False, pretty_mode: str = "summary", lines_expanded: int = 12, strip_ansi: bool = True, json_pretty: bool = False):
+    def __init__(
+        self,
+        stdscr,
+        file_path: str,
+        from_start: bool = False,
+        max_items: int = 200,
+        lines_per_item: int = 5,
+        pretty_preview: bool = False,
+        pretty_mode: str = "summary",
+        lines_expanded: int = 12,
+        strip_ansi: bool = True,
+        json_pretty: bool = False,
+    ):
         self.stdscr = stdscr
         self.tailer = FileTail(file_path, from_start=from_start)
         self.items: Dict[Tuple[str, int], ItemState] = {}
@@ -188,15 +200,15 @@ class VizApp:
             curses.start_color()
             curses.use_default_colors()
             # Pair ids
-            curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)   # header
-            curses.init_pair(2, curses.COLOR_CYAN, -1)                   # function args
-            curses.init_pair(3, curses.COLOR_GREEN, -1)                  # output text
-            curses.init_pair(4, curses.COLOR_MAGENTA, -1)                # tool/tool calls
-            curses.init_pair(5, curses.COLOR_YELLOW, -1)                 # info
-            curses.init_pair(6, curses.COLOR_RED, -1)                    # error
-            curses.init_pair(7, curses.COLOR_WHITE, -1)                  # default
-            curses.init_pair(8, curses.COLOR_BLACK, curses.COLOR_YELLOW) # warn badge
-            curses.init_pair(9, curses.COLOR_BLACK, curses.COLOR_RED)    # error badge
+            curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)  # header
+            curses.init_pair(2, curses.COLOR_CYAN, -1)  # function args
+            curses.init_pair(3, curses.COLOR_GREEN, -1)  # output text
+            curses.init_pair(4, curses.COLOR_MAGENTA, -1)  # tool/tool calls
+            curses.init_pair(5, curses.COLOR_YELLOW, -1)  # info
+            curses.init_pair(6, curses.COLOR_RED, -1)  # error
+            curses.init_pair(7, curses.COLOR_WHITE, -1)  # default
+            curses.init_pair(8, curses.COLOR_BLACK, curses.COLOR_YELLOW)  # warn badge
+            curses.init_pair(9, curses.COLOR_BLACK, curses.COLOR_RED)  # error badge
 
     def _has_colors_safe(self) -> bool:
         try:
@@ -227,16 +239,16 @@ class VizApp:
         if limit <= 1:
             return "…" if s else ""
         s1 = " ".join(s.split())
-        return s1 if len(s1) <= limit else ("…" + s1[-(limit - 1):])
+        return s1 if len(s1) <= limit else ("…" + s1[-(limit - 1) :])
 
     def _strip_ansi(self, s: str) -> str:
         return ANSI_RE.sub("", s)
 
-    def _wrap_text(self, text: str, width: int) -> list[str]:
-        lines: list[str] = []
+    def _wrap_text(self, text: str, width: int) -> List[str]:
+        lines: List[str] = []
         if width <= 0:
             return [text]
-        for segment in text.replace('\r', '').split('\n'):
+        for segment in text.replace("\r", "").split("\n"):
             s = segment
             while len(s) > width:
                 lines.append(s[:width])
@@ -244,9 +256,9 @@ class VizApp:
             lines.append(s)
         return lines
 
-    def _pretty_json_lines(self, content: str) -> Optional[list[str]]:
+    def _pretty_json_lines(self, content: str) -> Optional[List[str]]:
         s = content.strip()
-        if not s or (not s.startswith('{') and not s.startswith('[')):
+        if not s or (not s.startswith("{") and not s.startswith("[")):
             return None
         try:
             obj = json.loads(s)
@@ -256,13 +268,13 @@ class VizApp:
             pretty = json.dumps(obj, indent=2, ensure_ascii=False)
         except Exception:
             return None
-        return pretty.split('\n')
+        return pretty.split("\n")
 
     def _draw_json_line(self, row: int, col: int, text: str, width: int, default_attr: int):
         # Simple highlighter: indent + key (cyan) + punctuation default; values by type
         if not self._has_colors_safe():
             try:
-                self.stdscr.addnstr(row, col, text[: width], width, default_attr)
+                self.stdscr.addnstr(row, col, text[:width], width, default_attr)
             except curses.error:
                 pass
             return
@@ -273,44 +285,56 @@ class VizApp:
             attr = default_attr
             if val.startswith('"'):
                 attr = curses.color_pair(3)
-            elif re.match(r'^-?\d', val):
+            elif re.match(r"^-?\d", val):
                 attr = curses.color_pair(5)
-            elif val.startswith(('true','false','null')):
+            elif val.startswith(("true", "false", "null")):
                 attr = curses.color_pair(4)
             try:
-                self.stdscr.addnstr(row, col, text[: width], width, attr)
+                self.stdscr.addnstr(row, col, text[:width], width, attr)
             except curses.error:
                 pass
             return
         indent, key, gap, rest = key_m.groups()
         x = col
         try:
-            self.stdscr.addnstr(row, x, indent[: width - (x-col)], width - (x-col), default_attr)
+            self.stdscr.addnstr(
+                row, x, indent[: width - (x - col)], width - (x - col), default_attr
+            )
         except curses.error:
             pass
         x += len(indent)
         ktxt = '"' + key + '"'
         try:
-            self.stdscr.addnstr(row, x, ktxt[: max(0, width - (x-col))], max(0, width - (x-col)), curses.color_pair(2))
+            self.stdscr.addnstr(
+                row,
+                x,
+                ktxt[: max(0, width - (x - col))],
+                max(0, width - (x - col)),
+                curses.color_pair(2),
+            )
         except curses.error:
             pass
         x += len(ktxt)
         try:
-            self.stdscr.addnstr(row, x, ':' + gap, min(len(':'+gap), max(0, width - (x-col))), default_attr)
+            self.stdscr.addnstr(
+                row, x, ":" + gap, min(len(":" + gap), max(0, width - (x - col))), default_attr
+            )
         except curses.error:
             pass
-        x += len(':'+gap)
+        x += len(":" + gap)
         # value coloring
         val_attr = default_attr
         rv = rest.lstrip()
         if rv.startswith('"'):
             val_attr = curses.color_pair(3)
-        elif re.match(r'^-?\d', rv):
+        elif re.match(r"^-?\d", rv):
             val_attr = curses.color_pair(5)
-        elif rv.startswith(('true','false','null')):
+        elif rv.startswith(("true", "false", "null")):
             val_attr = curses.color_pair(4)
         try:
-            self.stdscr.addnstr(row, x, rest[: max(0, width - (x-col))], max(0, width - (x-col)), val_attr)
+            self.stdscr.addnstr(
+                row, x, rest[: max(0, width - (x - col))], max(0, width - (x - col)), val_attr
+            )
         except curses.error:
             pass
 
@@ -348,7 +372,7 @@ class VizApp:
         # Extra metadata
         m = re.search(r'"with_escalated_permissions"\s*:\s*(true|false)', src, re.I)
         if m:
-            out["with_escalated_permissions"] = (m.group(1).lower() == "true")
+            out["with_escalated_permissions"] = m.group(1).lower() == "true"
         m = re.search(r'"timeout_ms"\s*:\s*(\d+)', src)
         if m:
             out["timeout_ms"] = int(m.group(1))
@@ -381,10 +405,10 @@ class VizApp:
         if i1 == -1:
             partial = True
             i1 = len(cand)
-        body = cand[i0 + len("*** Begin Patch"): i1]
+        body = cand[i0 + len("*** Begin Patch") : i1]
         add = update = delete = 0
         plus = minus = 0
-        files: list[tuple[str, str]] = []
+        files: List[Tuple[str, str]] = []
         for ln in body.splitlines():
             if ln.startswith("*** Add File: "):
                 add += 1
@@ -418,7 +442,7 @@ class VizApp:
         raw = st.snapshot()
         tlabel = (st.type_label or "").lower()
         s = raw.strip()
-        parts: list[str] = []
+        parts: List[str] = []
         attr = self.color_for_type(tlabel)
         # Tool/function args → summarize fields
         if tlabel.endswith("function_call_arguments.delta") or s.startswith("{"):
@@ -434,7 +458,9 @@ class VizApp:
                     host = info["url"]
                 parts.append(f"🔗 {self._ellipsize(host, max(8, width//3))}")
             if info.get("path"):
-                parts.append(f"📄 {self._ellipsize(os.path.basename(info['path']), max(8, width//3))}")
+                parts.append(
+                    f"📄 {self._ellipsize(os.path.basename(info['path']), max(8, width//3))}"
+                )
             if info.get("command"):
                 cmd_str = info["command"]
                 patch_sum = self._summarize_apply_patch(cmd_str, width)
@@ -527,12 +553,14 @@ class VizApp:
                     parts.append(f"🔎 {self._ellipsize(info['query'], max(8, width//2))}")
                 if info.get("url"):
                     try:
-                        host = urlparse(info['url']).netloc or info['url']
+                        host = urlparse(info["url"]).netloc or info["url"]
                     except Exception:
-                        host = info['url']
+                        host = info["url"]
                     parts.append(f"🔗 {self._ellipsize(host, max(8, width//3))}")
                 if info.get("path"):
-                    parts.append(f"📄 {self._ellipsize(os.path.basename(info['path']), max(8, width//3))}")
+                    parts.append(
+                        f"📄 {self._ellipsize(os.path.basename(info['path']), max(8, width//3))}"
+                    )
                 if info.get("command"):
                     cmd_str = info["command"]
                     patch_sum = self._summarize_apply_patch(cmd_str, width)
@@ -559,7 +587,7 @@ class VizApp:
             # default SSE
             s = prefix + f"📡 {obj.get('type','event')}"
             if obj.get("delta"):
-                s += ": " + self._ellipsize(str(obj["delta"]), max(8, width//2))
+                s += ": " + self._ellipsize(str(obj["delta"]), max(8, width // 2))
             return self._ellipsize(s, width), attr
         # FunctionCall JSON lines
         m = FUNCTIONCALL_JSON_RE.search(ln)
@@ -587,15 +615,15 @@ class VizApp:
         s = f"{badge} {ln_clean}"
         return self._ellipsize(s, width), attr
 
-    def preview_lines_for_pretty(self, st: ItemState, width: int, limit: int) -> list[str]:
+    def preview_lines_for_pretty(self, st: ItemState, width: int, limit: int) -> List[str]:
         summary, _a = self.get_pretty_preview(st, width)
         summary_lines = self._wrap_text(summary, max(1, width))
-        if self.pretty_mode == 'summary' or limit <= len(summary_lines):
+        if self.pretty_mode == "summary" or limit <= len(summary_lines):
             return summary_lines[: max(1, limit)]
         remain = max(0, limit - len(summary_lines))
-        raw = st.snapshot().replace('\r', '').replace('\n', ' ')
+        raw = st.snapshot().replace("\r", "").replace("\n", " ")
         shown_chars = sum(len(s) for s in summary_lines)
-        raw_after = raw[shown_chars:] if shown_chars < len(raw) else ''
+        raw_after = raw[shown_chars:] if shown_chars < len(raw) else ""
         tail_chars = width * remain
         tail = self._tail_ellipsize(raw_after, tail_chars)
         tail_lines = self._wrap_text(tail, max(1, width))
@@ -639,12 +667,12 @@ class VizApp:
                 st.append_delta(delta, seq, etype, out_idx)
                 return
             # Non-delta SSE we still note
-            ln = self._strip_ansi(line) if hasattr(self, 'strip_ansi') and self.strip_ansi else line
+            ln = self._strip_ansi(line) if hasattr(self, "strip_ansi") and self.strip_ansi else line
             self.recent_other.append(ln)
             return
 
         # Not an SSE JSON line; keep a short tail
-        ln = self._strip_ansi(line) if hasattr(self, 'strip_ansi') and self.strip_ansi else line
+        ln = self._strip_ansi(line) if hasattr(self, "strip_ansi") and self.strip_ansi else line
         self.recent_other.append(ln)
 
     def draw(self):
@@ -655,16 +683,18 @@ class VizApp:
         if self.follow_top:
             header += " [FOLLOWING]"
         header += " "
-        filt = self.type_filter if self.type_filter else 'all'
+        filt = self.type_filter if self.type_filter else "all"
         if not self.pretty_preview:
-            pretty = 'off'
+            pretty = "off"
         else:
             pretty = self.pretty_mode
         stats = (
             f"events:{self.event_count} deltas:{self.delta_count} eps:{self.eps:0.1f} "
             f"items:{len(self.items)} filt:{filt} pretty:{pretty}"
         )
-        head_line = (header + (" " * max(1, w - len(header) - len(stats) - 1)) + stats)[: max(0, w - 1)]
+        head_line = (header + (" " * max(1, w - len(header) - len(stats) - 1)) + stats)[
+            : max(0, w - 1)
+        ]
         if curses.has_colors():
             # Always render header in blue; following indicated by badge
             self.stdscr.addnstr(0, 0, head_line, w - 1, curses.color_pair(1) | curses.A_BOLD)
@@ -684,18 +714,22 @@ class VizApp:
         def type_matches(lbl: str) -> bool:
             if not self.type_filter:
                 return True
-            if self.type_filter == 'args':
-                return lbl.endswith('function_call_arguments.delta')
-            if self.type_filter == 'out':
-                return lbl.endswith('output_text.delta')
-            if self.type_filter == 'err':
-                return 'error' in lbl.lower()
+            if self.type_filter == "args":
+                return lbl.endswith("function_call_arguments.delta")
+            if self.type_filter == "out":
+                return lbl.endswith("output_text.delta")
+            if self.type_filter == "err":
+                return "error" in lbl.lower()
             return True
 
         items_seq = list(self.items.items())
         items_seq.sort(key=lambda kv: kv[1].updated_at, reverse=True)
-        pinned_items = [kv for kv in items_seq if kv[0] in self.pinned and type_matches(kv[1].type_label)]
-        other_items = [kv for kv in items_seq if kv[0] not in self.pinned and type_matches(kv[1].type_label)]
+        pinned_items = [
+            kv for kv in items_seq if kv[0] in self.pinned and type_matches(kv[1].type_label)
+        ]
+        other_items = [
+            kv for kv in items_seq if kv[0] not in self.pinned and type_matches(kv[1].type_label)
+        ]
         ordered = pinned_items + other_items
 
         # Maintain selection across frames
@@ -712,18 +746,20 @@ class VizApp:
         selected_index = keys_only.index(self.selected_key) if self.selected_key in keys_only else 0
 
         # Precompute how many rows each item will consume (<= lines_per_item)
-        def wrap_lines_for(st: ItemState, first_prefix_len: int, width: int, limit: int) -> list[str]:
+        def wrap_lines_for(
+            st: ItemState, first_prefix_len: int, width: int, limit: int
+        ) -> List[str]:
             if self.pretty_preview:
                 # Build explicit summary + live tail lines so the newest text is visible.
                 summary, _a = self.get_pretty_preview(st, width)
                 summary_lines = self._wrap_text(summary, max(1, width))
-                if self.pretty_mode == 'summary' or limit <= len(summary_lines):
+                if self.pretty_mode == "summary" or limit <= len(summary_lines):
                     return summary_lines[: max(1, limit)]
                 remain = max(0, limit - len(summary_lines))
-                raw = st.snapshot().replace('\r', '').replace('\n', ' ')
+                raw = st.snapshot().replace("\r", "").replace("\n", " ")
                 # Avoid duplicating what was already shown in summary by skipping that many visible chars
                 shown_chars = sum(len(s) for s in summary_lines)
-                raw_after = raw[shown_chars:] if shown_chars < len(raw) else ''
+                raw_after = raw[shown_chars:] if shown_chars < len(raw) else ""
                 tail_chars = width * remain
                 tail = self._tail_ellipsize(raw_after, tail_chars)
                 tail_lines = self._wrap_text(tail, max(1, width))
@@ -737,11 +773,13 @@ class VizApp:
             return lines
 
         # Determine block heights and build view blocks
-        blocks: list[Tuple[Tuple[str, int], list[str], str]] = []  # (key, lines, prefix)
+        blocks: List[Tuple[Tuple[str, int], List[str], str]] = []  # (key, lines, prefix)
         for (item_id, out_idx), st in ordered:
             prefix = f"{shorten_id(item_id, 12)}#{out_idx}: "
             avail = max(1, w - len(prefix) - 1)
-            limit = self.lines_expanded if (item_id, out_idx) in self.expanded else self.lines_per_item
+            limit = (
+                self.lines_expanded if (item_id, out_idx) in self.expanded else self.lines_per_item
+            )
             lines = wrap_lines_for(st, len(prefix), avail, limit)
             blocks.append(((item_id, out_idx), lines, prefix))
 
@@ -782,13 +820,15 @@ class VizApp:
                 _summary, attr = self.get_pretty_preview(st, avail)
             else:
                 attr = self.color_for_type(tlabel)
-            sel = (key == self.selected_key)
+            sel = key == self.selected_key
             if sel:
                 attr |= curses.A_REVERSE
             # First line has prefix
             avail = max(0, w - len(prefix) - 1)
             if row <= bottom:
-                self.stdscr.addnstr(row, 0, prefix, len(prefix), curses.A_BOLD | (curses.A_REVERSE if sel else 0))
+                self.stdscr.addnstr(
+                    row, 0, prefix, len(prefix), curses.A_BOLD | (curses.A_REVERSE if sel else 0)
+                )
                 if lines:
                     self.stdscr.addnstr(row, len(prefix), lines[0][:avail], avail, attr)
                 row += 1
@@ -856,13 +896,13 @@ class VizApp:
             except curses.error:
                 ch = -1
             if ch != -1:
-                if ch in (ord('q'), ord('Q')):
+                if ch in (ord("q"), ord("Q")):
                     self.running = False
-                elif ch in (ord('c'), ord('C')):
+                elif ch in (ord("c"), ord("C")):
                     self.items.clear()
-                elif ch in (ord('p'), ord('P')):
+                elif ch in (ord("p"), ord("P")):
                     self.paused = not self.paused
-                elif ch in (ord('s'), ord('S')):
+                elif ch in (ord("s"), ord("S")):
                     # Toggle start mode and reopen file
                     self.tailer.from_start = not self.tailer.from_start
                     try:
@@ -873,13 +913,13 @@ class VizApp:
                     self.tailer._fh = None
                     self.tailer._ino = None
                     self.tailer._pos = 0
-                elif ch in (curses.KEY_UP, ord('k')):
+                elif ch in (curses.KEY_UP, ord("k")):
                     if self.follow_top:
                         # leaving follow mode
                         self.follow_top = False
                         self.new_since = 0
                     self._move_selection(-1)
-                elif ch in (curses.KEY_DOWN, ord('j')):
+                elif ch in (curses.KEY_DOWN, ord("j")):
                     if self.follow_top:
                         self.follow_top = False
                         self.new_since = 0
@@ -888,20 +928,20 @@ class VizApp:
                     # Enter -> open detail view
                     if self.selected_key:
                         self.detail_view(self.selected_key)
-                elif ch in (ord('x'), ord('X')):
+                elif ch in (ord("x"), ord("X")):
                     if self.selected_key:
                         if self.selected_key in self.pinned:
                             self.pinned.remove(self.selected_key)
                         else:
                             self.pinned.add(self.selected_key)
-                elif ch in (ord('e'), ord('E')):
+                elif ch in (ord("e"), ord("E")):
                     if self.selected_key:
                         self.export_item(self.selected_key)
-                elif ch in (ord('f'), ord('F')):
+                elif ch in (ord("f"), ord("F")):
                     self._cycle_filter()
-                elif ch == ord(' '):
+                elif ch == ord(" "):
                     pass  # manual refresh
-                elif ch in (ord('b'), ord('B')):
+                elif ch in (ord("b"), ord("B")):
                     # Cycle pretty mode: off -> summary -> hybrid -> off
                     if not self.pretty_preview:
                         self.pretty_preview = True
@@ -911,14 +951,14 @@ class VizApp:
                     else:
                         self.pretty_preview = False
                         self.pretty_mode = "summary"
-                elif ch in (ord('m'), ord('M')):
+                elif ch in (ord("m"), ord("M")):
                     # Toggle expanded lines for the selected item
                     if self.selected_key:
                         if self.selected_key in self.expanded:
                             self.expanded.remove(self.selected_key)
                         else:
                             self.expanded.add(self.selected_key)
-                elif ch in (ord('T'),):
+                elif ch in (ord("T"),):
                     # Follow newest: jump to top and reset counter
                     self.follow_top = True
                     self.new_since = 0
@@ -949,7 +989,7 @@ class VizApp:
 
     def _cycle_filter(self):
         # None -> args -> out -> err -> None
-        order = [None, 'args', 'out', 'err']
+        order = [None, "args", "out", "err"]
         try:
             idx = order.index(self.type_filter)
         except ValueError:
@@ -961,20 +1001,26 @@ class VizApp:
             return
         # User-initiated selection movement implies leaving follow mode
         self.follow_top = False
+
         def type_matches(lbl: str) -> bool:
             if not self.type_filter:
                 return True
-            if self.type_filter == 'args':
-                return lbl.endswith('function_call_arguments.delta')
-            if self.type_filter == 'out':
-                return lbl.endswith('output_text.delta')
-            if self.type_filter == 'err':
-                return 'error' in lbl.lower()
+            if self.type_filter == "args":
+                return lbl.endswith("function_call_arguments.delta")
+            if self.type_filter == "out":
+                return lbl.endswith("output_text.delta")
+            if self.type_filter == "err":
+                return "error" in lbl.lower()
             return True
+
         items_seq = list(self.items.items())
         items_seq.sort(key=lambda kv: kv[1].updated_at, reverse=True)
-        pinned_items = [kv for kv in items_seq if kv[0] in self.pinned and type_matches(kv[1].type_label)]
-        other_items = [kv for kv in items_seq if kv[0] not in self.pinned and type_matches(kv[1].type_label)]
+        pinned_items = [
+            kv for kv in items_seq if kv[0] in self.pinned and type_matches(kv[1].type_label)
+        ]
+        other_items = [
+            kv for kv in items_seq if kv[0] not in self.pinned and type_matches(kv[1].type_label)
+        ]
         keys = [k for k, _ in (pinned_items + other_items)]
         if self.selected_key not in keys:
             self.selected_key = keys[0]
@@ -988,11 +1034,19 @@ class VizApp:
         if not st:
             return
         item_id, out_idx = key
-        safe_id = re.sub(r"[^A-Za-z0-9_.-]", "_", item_id)
-        ts = time.strftime('%Y%m%d_%H%M%S')
-        path = f"codexrays_export_{safe_id}_{out_idx}_{ts}.txt"
+        # Robust filename sanitization to prevent path traversal
+        safe_id = re.sub(r"[^A-Za-z0-9_-]", "_", item_id)[:50]  # Limit length
+        safe_id = safe_id.strip("_.-")  # Remove leading/trailing problematic chars
+        if not safe_id or safe_id.startswith(
+            "."
+        ):  # Fallback if everything was filtered out or starts with dot
+            safe_id = "item"
+        ts = time.strftime("%Y%m%d_%H%M%S")
+        filename = f"codexrays_export_{safe_id}_{out_idx}_{ts}.txt"
+        # Ensure file is created in current directory only - use basename to strip any path
+        path = os.path.basename(filename)
         try:
-            with open(path, 'w', encoding='utf-8') as f:
+            with open(path, "w", encoding="utf-8") as f:
                 f.write(st.snapshot())
             # flash a small message in recent logs
             self.recent_other.append(f"INFO export -> {path}")
@@ -1015,39 +1069,44 @@ class VizApp:
             item_id, out_idx = key
             title = f" View — {item_id}#{out_idx} [{st.type_label}] "
             if curses.has_colors():
-                self.stdscr.addnstr(0, 0, title[: w - 1], w - 1, curses.color_pair(1) | curses.A_BOLD)
+                self.stdscr.addnstr(
+                    0, 0, title[: w - 1], w - 1, curses.color_pair(1) | curses.A_BOLD
+                )
             else:
                 self.stdscr.addnstr(0, 0, title[: w - 1], w - 1, curses.A_REVERSE)
             # Prepare lines with wrapping (optionally pretty JSON)
-            content = st.snapshot().replace('\r', '')
-            json_lines: Optional[list[str]] = None
+            content = st.snapshot().replace("\r", "")
+            json_lines: Optional[List[str]] = None
             if self.json_pretty:
                 json_lines = self._pretty_json_lines(content)
             if json_lines is None:
-                lines: list[str] = []
-                for seg in content.split('\n'):
+                lines: List[str] = []
+                for seg in content.split("\n"):
                     s = seg
                     while len(s) > w - 2:
                         lines.append(s[: w - 2])
-                        s = s[w - 2:]
+                        s = s[w - 2 :]
                     lines.append(s)
                 draw_colored = False
             else:
                 if self.json_wrap:
                     # Word-wrap each pretty JSON line preserving indent
-                    wrapped: list[str] = []
+                    wrapped: List[str] = []
                     avail = max(1, w - 2)
                     for ln in json_lines:
                         indent = len(ln) - len(ln.lstrip())
-                        wrapped.extend(textwrap.wrap(
-                            ln,
-                            width=avail,
-                            break_long_words=False,
-                            break_on_hyphens=False,
-                            subsequent_indent=' ' * indent,
-                            replace_whitespace=False,
-                            drop_whitespace=False,
-                        ) or [ln])
+                        wrapped.extend(
+                            textwrap.wrap(
+                                ln,
+                                width=avail,
+                                break_long_words=False,
+                                break_on_hyphens=False,
+                                subsequent_indent=" " * indent,
+                                replace_whitespace=False,
+                                drop_whitespace=False,
+                            )
+                            or [ln]
+                        )
                     lines = wrapped
                 else:
                     lines = json_lines
@@ -1060,12 +1119,16 @@ class VizApp:
             end = min(len(lines), scroll + view_h)
             for i in range(scroll, end):
                 if draw_colored:
-                    self._draw_json_line(row, 0, lines[i], w - 1, self.color_for_type(st.type_label))
+                    self._draw_json_line(
+                        row, 0, lines[i], w - 1, self.color_for_type(st.type_label)
+                    )
                 else:
-                    self.stdscr.addnstr(row, 0, lines[i][: w - 1], w - 1, self.color_for_type(st.type_label))
+                    self.stdscr.addnstr(
+                        row, 0, lines[i][: w - 1], w - 1, self.color_for_type(st.type_label)
+                    )
                 row += 1
             # Footer
-            wrap_state = 'on' if (self.json_pretty and self.json_wrap) else 'off'
+            wrap_state = "on" if (self.json_pretty and self.json_wrap) else "off"
             footer = f" ↑/↓/PgUp/PgDn/Home/End scroll  w:wrap({wrap_state})  e:export  x:pin  q/ESC:back "
             self.stdscr.addnstr(h - 1, 0, footer[: w - 1], w - 1, curses.A_DIM)
             self.stdscr.refresh()
@@ -1083,26 +1146,26 @@ class VizApp:
                         self.handle_line(ln)
                 time.sleep(0.02)
                 continue
-            if ch in (ord('q'), 27):  # q or ESC
+            if ch in (ord("q"), 27):  # q or ESC
                 return
-            if ch in (curses.KEY_UP, ord('k')):
+            if ch in (curses.KEY_UP, ord("k")):
                 scroll -= 1
-            elif ch in (curses.KEY_DOWN, ord('j')):
+            elif ch in (curses.KEY_DOWN, ord("j")):
                 scroll += 1
             elif ch == curses.KEY_PPAGE:  # PgUp
-                scroll -= (h - 4)
+                scroll -= h - 4
             elif ch == curses.KEY_NPAGE:  # PgDn
-                scroll += (h - 4)
-            elif ch in (curses.KEY_HOME, ord('g')):
+                scroll += h - 4
+            elif ch in (curses.KEY_HOME, ord("g")):
                 scroll = 0
-            elif ch in (curses.KEY_END, ord('G')):
+            elif ch in (curses.KEY_END, ord("G")):
                 scroll = 10**9
-            elif ch in (ord('w'), ord('W')):
+            elif ch in (ord("w"), ord("W")):
                 # Toggle JSON wrap in detail view
                 self.json_wrap = not self.json_wrap
-            elif ch in (ord('e'), ord('E')):
+            elif ch in (ord("e"), ord("E")):
                 self.export_item(key)
-            elif ch in (ord('x'), ord('X')):
+            elif ch in (ord("x"), ord("X")):
                 if key in self.pinned:
                     self.pinned.remove(key)
                 else:
@@ -1110,17 +1173,51 @@ class VizApp:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Real-time streaming log visualizer for Codex TUI logs.")
+    parser = argparse.ArgumentParser(
+        description="Real-time streaming log visualizer for Codex TUI logs."
+    )
     default_log = os.path.expanduser("~/.codex/log/codex-tui.log")
-    parser.add_argument("--file", "-f", default=default_log, help=f"Path to log file to follow (default: {default_log})")
-    parser.add_argument("--from-start", action="store_true", help="Read from start instead of tailing from end")
-    parser.add_argument("--max-items", type=int, default=200, help="Max distinct item_id streams to track")
-    parser.add_argument("--lines-per-item", "-L", type=int, default=5, help="Maximum wrapped lines to show per entry in list view")
-    parser.add_argument("--lines-expanded", type=int, default=12, help="Lines to show when an item is expanded with 'm'")
-    parser.add_argument("--pretty-preview", action="store_true", help="Render emoji/parsed previews in list view (or set XRAYS_PRETTY=1)")
-    parser.add_argument("--pretty-mode", choices=["summary", "hybrid"], help="Pretty preview style when enabled")
-    parser.add_argument("--json-pretty", action="store_true", help="In detail view, pretty-print JSON with simple colors")
-    parser.add_argument("--keep-ansi", action="store_true", help="Do not strip ANSI color codes from recent logs")
+    parser.add_argument(
+        "--file",
+        "-f",
+        default=default_log,
+        help=f"Path to log file to follow (default: {default_log})",
+    )
+    parser.add_argument(
+        "--from-start", action="store_true", help="Read from start instead of tailing from end"
+    )
+    parser.add_argument(
+        "--max-items", type=int, default=200, help="Max distinct item_id streams to track"
+    )
+    parser.add_argument(
+        "--lines-per-item",
+        "-L",
+        type=int,
+        default=5,
+        help="Maximum wrapped lines to show per entry in list view",
+    )
+    parser.add_argument(
+        "--lines-expanded",
+        type=int,
+        default=12,
+        help="Lines to show when an item is expanded with 'm'",
+    )
+    parser.add_argument(
+        "--pretty-preview",
+        action="store_true",
+        help="Render emoji/parsed previews in list view (or set XRAYS_PRETTY=1)",
+    )
+    parser.add_argument(
+        "--pretty-mode", choices=["summary", "hybrid"], help="Pretty preview style when enabled"
+    )
+    parser.add_argument(
+        "--json-pretty",
+        action="store_true",
+        help="In detail view, pretty-print JSON with simple colors",
+    )
+    parser.add_argument(
+        "--keep-ansi", action="store_true", help="Do not strip ANSI color codes from recent logs"
+    )
     args = parser.parse_args()
 
     if not os.path.exists(args.file):

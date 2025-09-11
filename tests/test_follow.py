@@ -15,7 +15,7 @@ def sse_line(typ, item_id, out_idx, delta):
 
 
 def test_new_since_counts_new_items_only():
-    app = sv.VizApp(None, file_path=os.path.join(os.getcwd(), 'codex-tui.log'))
+    app = sv.VizApp(None, file_path=os.path.join(os.getcwd(), "codex-tui.log"))
     app.follow_top = False
     # First new item -> count 1
     app.handle_line(sse_line("response.output_text.delta", "idA", 0, "hi"))
