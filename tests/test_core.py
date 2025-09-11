@@ -21,7 +21,7 @@ def test_summarize_apply_patch_diffstat():
     )
     # Build a fake command string that contains the patch envelope
     cmd = f"apply_patch << 'PATCH'\n{patch}PATCH"
-    app = sv.VizApp(None, file_path=os.path.join(os.getcwd(), 'codex-tui.log'))
+    app = sv.VizApp(None, file_path=os.path.join(os.getcwd(), "codex-tui.log"))
     out = app._summarize_apply_patch(cmd, width=80)
     assert out is not None
     # Has counts and filenames
